@@ -3524,7 +3524,7 @@ function selectMarketCurrency(curr) { currentMarketCurrencyChoice = curr; docume
 
   <script>
     // 1. Подключаемся к порту 3000 (на котором работает сервер)
-    const socket = io('http://localhost:3000');
+    const socket = io;
 
     // 2. Генерируем или берем случайное имя вместо prompt()
     let username = localStorage.getItem('chat_username');
@@ -3534,7 +3534,7 @@ function selectMarketCurrency(curr) { currentMarketCurrencyChoice = curr; docume
     }
 
     // 3. Получаем историю сообщений
-    socket.on('history', (messages) => {
+    socket.on('chat history', (messages) => {
       const chatBox = document.getElementById('chat');
       if (chatBox) {
         chatBox.innerHTML = '';
