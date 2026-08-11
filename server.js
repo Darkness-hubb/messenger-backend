@@ -3,12 +3,18 @@ const http = require('http');
 const { Server } = require('socket.io');
 const mongoose = require('mongoose');
 const path = require('path');
+const { OAuth2Client } = require('google-auth-library');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Подключение к базе данных MongoDB Atlas через переменную окружения MONGO_URI
+const GOOGLE_CLIENT_ID = '874189976905-p2fvq2et5ujeui2tsrtapkfpfco62b0c.apps.googleusercontent.com';
+const JWT_SECRET = process.env.JWT_SECRET || 'смени-меня-на-случайную-строку-12345';
+
+const oauth2Client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
 const MONGO_URI = process.env.MONGO_URI;
 
 if (MONGO_URI) {
@@ -19,7 +25,6 @@ if (MONGO_URI) {
   console.log('Внимание: MONGO_URI не найден в Environment Variables!');
 }
 
-// Схема и модель для сообщений
 const messageSchema = new mongoose.Schema({
   username: String,
   text: String,
@@ -27,13 +32,70 @@ const messageSchema = new mongoose.Schema({
 });
 const Message = mongoose.model('Message', messageSchema);
 
-// Раздача статических файлов (index.html и др.) из текущей папки
+const userSchema = new mongoose.Schema({
+  googleId: { type: String, unique: true, sparse: true },
+  email: { type: String, unique: true, sparse: true },
+  name: String,
+  picture: String,
+  tag: String,
+  createdAt: { type: Date, default: Date.now }
+});
+const User = mongoose.model('User', userSchema);
+
+app.use(express.json());
+
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { id_token } = req.body;
+    if (!id_token) return res.status(400).json({ error: 'No token' });
+
+    const ticket = await oauth2Client.verifyIdToken({
+      idToken: id_token,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+
+    if (!payload) return res.status(401).json({ error: 'Invalid token' });
+
+    let user = await User.findOne({ googleId: payload.sub });
+    if (!user) {
+      user = new User({
+        googleId: payload.sub,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture,
+        tag: '@' + (payload.email.split('@')[0] || 'user')
+      });
+      await user.save();
+    }
+
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: {
+        name: user.name,
+        email: user.email,
+        picture: user.picture,
+        tag: user.tag
+      }
+    });
+  } catch (err) {
+    console.error('Google auth error:', err);
+    res.status(500).json({ error: 'Auth failed' });
+  }
+});
+
 app.use(express.static(path.join(__dirname)));
 
 io.on('connection', async (socket) => {
   console.log('Пользователь подключился');
 
-  // 1. Отправляем историю последних 50 сообщений новому пользователю
   try {
     const history = await Message.find().sort({ time: 1 }).limit(50);
     socket.emit('chat history', history);
@@ -41,19 +103,15 @@ io.on('connection', async (socket) => {
     console.error('Ошибка при загрузке истории:', err);
   }
 
-  // 2. Слушаем новые сообщения от клиентов
   socket.on('chatMessage', async (data) => {
     try {
       const username = data.username || 'Аноним';
       const text = data.text;
-
       if (!text) return;
 
-      // Сохраняем сообщение в базу данных
       const newMessage = new Message({ username, text });
       await newMessage.save();
 
-      // Рассылаем всем подключенным пользователям
       io.emit('chatMessage', {
         username: newMessage.username,
         text: newMessage.text
@@ -68,7 +126,6 @@ io.on('connection', async (socket) => {
   });
 });
 
-// Запуск сервера на порту от Render или 3000 локально
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
