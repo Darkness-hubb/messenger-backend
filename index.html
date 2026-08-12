@@ -1032,10 +1032,7 @@
 
 
 <base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
-<base target="_blank">
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
 <base target="_blank">
 </head>
 <body>
@@ -1216,6 +1213,22 @@
       <input type="password" id="authPassword" placeholder="Пароль" style="padding: 12px 14px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; color: #fff; font-size: 14px; outline: none;">
       <button onclick="submitAuth()" style="padding: 12px; background: #fff; color: #000; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; margin-top: 4px;">Войти / Создать</button>
       <div id="authError" style="color: #ff5555; font-size: 13px; text-align: center; display: none;">Неверный пароль</div>
+      <div style="margin-top: 14px; text-align: center;">
+        <div style="font-size: 12px; color: #666; margin-bottom: 8px;">или</div>
+        <div id="g_id_onload"
+             data-client_id="874189976905-p2fvq2et5ujeui2tsrtapkfpfco62b0c.apps.googleusercontent.com"
+             data-callback="handleGoogleCredentialResponse"
+             data-auto_prompt="false">
+        </div>
+        <div class="g_id_signin"
+             data-type="standard"
+             data-size="large"
+             data-theme="outline"
+             data-text="sign_in_with"
+             data-shape="rectangular"
+             data-logo_alignment="left">
+        </div>
+      </div>
     </div>
   </div>
 <div class="app-container" id="appContainer">
@@ -1773,11 +1786,51 @@ function checkAuth() {
       if (auth.name) userProfile.name = auth.name;
       if (auth.tag) userProfile.tag = auth.tag;
       if (auth.password) userProfile._password = auth.password;
+      if (auth.picture) {
+        userProfile.avatarUrl = auth.picture;
+        userProfile.avatarContent = '';
+      }
       return;
     } catch(e) {}
   }
   document.getElementById('authScreen').style.display = 'flex';
   document.getElementById('intro-screen').style.display = 'none';
+}
+
+async function handleGoogleCredentialResponse(response) {
+  try {
+    const res = await fetch('/api/auth/google', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id_token: response.credential })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const authData = {
+        name: data.user.name,
+        tag: data.user.tag,
+        picture: data.user.picture,
+        token: data.token,
+        google: true
+      };
+      localStorage.setItem(AUTH_KEY, JSON.stringify(authData));
+      userProfile.name = data.user.name;
+      userProfile.tag = data.user.tag;
+      if (data.user.picture) {
+        userProfile.avatarUrl = data.user.picture;
+        userProfile.avatarContent = '';
+      }
+      saveData();
+      document.getElementById('authScreen').style.display = 'none';
+      showCosmoModal('🚀 Добро пожаловать!', 'Вы вошли через Google как ' + data.user.name);
+      switchTab('profile');
+    } else {
+      showCosmoModal('⚠️ Ошибка', 'Не удалось войти через Google');
+    }
+  } catch (e) {
+    console.error(e);
+    showCosmoModal('⚠️ Ошибка', 'Сетевая ошибка при входе через Google');
+  }
 }
 
 function submitAuth() {
@@ -3726,9 +3779,6 @@ function submitAddFriendModal() {
       chatBox.appendChild(msgElement);
       chatBox.scrollTop = chatBox.scrollHeight;
     }
-  </script>
-</body>
-</html>
   </script>
 </body>
 </html>
