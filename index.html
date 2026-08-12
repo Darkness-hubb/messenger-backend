@@ -2382,19 +2382,17 @@ function switchAddModalTab(tab) {
       } 
     }
     function toggleProfileGift(idx) {
-      const g = availableGifts[idx];
-      if (!userProfile.ownedGifts) userProfile.ownedGifts = [];
-      const pos = userProfile.ownedGifts.indexOf(g);
-      if (pos >= 0) {
+    if (!userProfile.ownedGifts) userProfile.ownedGifts = [];
+    const pos = userProfile.ownedGifts.indexOf(idx);
+    if (pos >= 0) {
         userProfile.ownedGifts.splice(pos, 1);
-      } else {
-        userProfile.ownedGifts.push(g);
-      }
-      saveData();
-      switchTab('profile');
-      closeCosmoModal();
-    
-
+    } else {
+        userProfile.ownedGifts.push(idx);
+    }
+    saveData();
+    switchTab('profile');
+    closeCosmoModal();
+}
     function setProfileBg(idx) { userProfile.activeProfileBg = profileBgs[idx] ? profileBgs[idx].id : idx; saveData(); switchTab('profile'); closeCosmoModal(); }
     
     // ===== МАРКЕТ =====
