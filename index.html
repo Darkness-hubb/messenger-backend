@@ -819,7 +819,12 @@
   
 
     /* ===== АНИМИРОВАННЫЙ ПЕРЕЛИВАЮЩИЙСЯ ФОН ПРОФИЛЯ ===== */
-    
+    .profile-animated-bg {
+      animation: profileBgShift 10s ease infinite;
+      background-size: 200% 200%;
+    }
+    @keyframes profileBgShift {
+      0% { background-position: 0% 50%; }
       12% { background-position: 25% 50%; }
       25% { background-position: 50% 50%; }
       37% { background-position: 75% 50%; }
@@ -829,7 +834,7 @@
       87% { background-position: 25% 50%; }
       100% { background-position: 0% 50%; }
     }
-    
+
     .profile-animated-bg .steam-card {
       background: rgba(8,8,8,0.88) !important;
       backdrop-filter: blur(20px);
@@ -2392,15 +2397,6 @@ function switchAddModalTab(tab) {
 
     function setProfileBg(idx) { userProfile.activeProfileBg = profileBgs[idx] ? profileBgs[idx].id : idx; saveData(); switchTab('profile'); closeCosmoModal(); }
     
-    userProfile.name = name || userProfile.name;
-      if (tag) userProfile.tag = tag;
-      userProfile.desc = desc;
-      if (emoji) userProfile.profileBgEmoji = emoji;
-      saveData();
-      closeCosmoModal();
-      switchTab('profile');
-    }
-
     // ===== МАРКЕТ =====
     const shopItems = [
       // РАМКИ
@@ -2615,17 +2611,6 @@ function selectMarketCurrency(curr) { currentMarketCurrencyChoice = curr; docume
         if (publicBtn) { publicBtn.style.background = 'rgba(255,255,255,0.04)'; publicBtn.style.borderColor = 'rgba(255,255,255,0.2)'; publicBtn.style.color = '#888'; }
       }
     }
-    // Извлекаем тег из ссылки
-      const match = link.match(/user\/([^\/\s]+)/);
-      if (!match) { showCosmoModal('⚠️ Ошибка', 'Неверный формат ссылки'); return; }
-
-      const tag = '@' + match[1];
-      const friendInput = document.getElementById('friendSearchInputModal');
-      if (friendInput) friendInput.value = tag;
-      submitAddFriendModal();
-    }
-
-    
 function findFriendByLinkModal() {
   const input = document.getElementById('friendLinkInputModal');
   if (!input) return;
