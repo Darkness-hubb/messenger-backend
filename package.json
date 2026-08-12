@@ -12,7 +12,8 @@
   "devDependencies": {
     "electron": "^43.2.0"
   },
-  "dependencies": {
+  "dependencies": {"google-auth-library": "^9.0.0",
+"jsonwebtoken": "^9.0.0"
     "express": "^5.2.1",
     "socket.io": "^4.8.3",
     "sqlite": "^5.1.1",
