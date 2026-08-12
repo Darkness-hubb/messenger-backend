@@ -2,7 +2,7 @@
   "name": "Cosmo X",
   "version": "1.0.0",
   "description": "",
-  "main": "main.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
@@ -13,9 +13,10 @@
     "electron": "^43.2.0"
   },
   "dependencies": {
+    "express": "^5.2.1",
     "google-auth-library": "^9.0.0",
     "jsonwebtoken": "^9.0.0",
-    "express": "^5.2.1",
+    "mongoose": "^8.0.0",
     "socket.io": "^4.8.3",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1"
