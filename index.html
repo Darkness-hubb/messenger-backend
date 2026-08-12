@@ -1277,8 +1277,6 @@
     ];
 
     let userProfile = {
-      birthday: "",
-      ownedGifts: ['🎁','🔥','🎂','🎄','🎈'],
       name: "Космонавт",
       tag: "@cosmonaut",
       status: "🟢 В сети",
@@ -1323,9 +1321,11 @@
       // NEW FEATURES
       stickersUnlocked: ['🚀','🌌','🪐','👽','☄️'],
       channels: [],
-      ownedGifts: []
-    }
-      const profileBgs = [
+      ownedGifts: ['🎁','🔥','🎂','🎄','🎈'],
+      birthday: "",
+      achievements: []
+    };
+    const profileBgs = [
         { id: 'cosmo', preview: 'linear-gradient(135deg, #0f0c29, #302b63, #24243e)' },
         { id: 'dark', preview: 'linear-gradient(135deg, #000000, #434343)' },
         { id: 'purple', preview: 'linear-gradient(135deg, #1a1a2e, #16213e, #0f3460)' },
@@ -1853,7 +1853,7 @@ function submitAuth() {
       if (auth.password !== password) { errorEl.textContent = 'Неверный пароль'; errorEl.style.display = 'block'; return; }
     } catch(e) { errorEl.textContent = 'Ошибка данных'; errorEl.style.display = 'block'; return; }
   } else {
-    const authData = { name: name, tag: tag || '@' + name.toLowerCase().replace(/\s+/g, '_'), password: password, created: new Date().toISOString() };
+    const authData = { name: name, tag: tag || '@' + name.toLowerCase().replace(/\s+/g, '_'), _password: password, created: new Date().toISOString() };
     localStorage.setItem(AUTH_KEY, JSON.stringify(authData));
   }
 
@@ -1864,13 +1864,10 @@ function submitAuth() {
   loadData();
 }
 
-const _originalLoadData = loadData;
-loadData = function() {
-  checkAuth();
-  _originalLoadData();
-};
+
 
 function loadData() {
+      checkAuth();
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         try {
@@ -2257,23 +2254,6 @@ function switchAddModalTab(tab) {
       userProfile.status = `${s.emoji} ${s.text}`;
       saveData(); switchTab('profile'); 
     }
-    function toggleEditProfile() {
-      const form = document.getElementById('editProfileForm');
-      const btn = document.getElementById('editProfileBtn');
-      if (form.style.display === 'none' || form.style.display === '') { form.style.display = 'flex'; btn.style.display = 'none'; }
-      else { form.style.display = 'none'; btn.style.display = 'block'; }
-    }
-    function saveProfile() {
-      const name = document.getElementById('inputName').value.trim();
-      const tag = document.getElementById('inputTag').value.trim();
-      if (tag && !tag.startsWith('@')) { showCosmoModal("⚠️ Ошибка", "Тег должен начинаться с @"); return; }
-      userProfile.name = name || userProfile.name;
-      if (tag) userProfile.tag = tag;
-      userProfile.desc = document.getElementById('inputDesc').value.trim() || userProfile.desc;
-      const emojiVal = document.getElementById('inputBgEmoji').value.trim();
-      if (emojiVal) userProfile.profileBgEmoji = emojiVal;
-      saveData(); switchTab('profile'); 
-    }
     function setProfileTheme(theme) {
       userProfile.profileTheme = theme;
       saveData();
@@ -2412,14 +2392,7 @@ function switchAddModalTab(tab) {
 
     function setProfileBg(idx) { userProfile.activeProfileBg = profileBgs[idx] ? profileBgs[idx].id : idx; saveData(); switchTab('profile'); closeCosmoModal(); }
     
-    function setProfileTheme(theme) { userProfile.profileTheme = theme; saveData(); switchTab('profile'); }
-function saveProfileSettings() {
-      const name = document.getElementById('settingsName').value.trim();
-      const tag = document.getElementById('settingsTag').value.trim();
-      const desc = document.getElementById('settingsDesc').value.trim();
-      const emoji = document.getElementById('settingsEmoji').value.trim();
-      if (tag && !tag.startsWith('@')) { showCosmoModal('⚠️ Ошибка', 'Тег должен начинаться с @'); return; }
-      userProfile.name = name || userProfile.name;
+    userProfile.name = name || userProfile.name;
       if (tag) userProfile.tag = tag;
       userProfile.desc = desc;
       if (emoji) userProfile.profileBgEmoji = emoji;
@@ -2642,18 +2615,12 @@ function selectMarketCurrency(curr) { currentMarketCurrencyChoice = curr; docume
         if (publicBtn) { publicBtn.style.background = 'rgba(255,255,255,0.04)'; publicBtn.style.borderColor = 'rgba(255,255,255,0.2)'; publicBtn.style.color = '#888'; }
       }
     }
-    function findFriendByLink() {
-      const input = document.getElementById('addFriendLinkInput');
-      if (!input) return;
-      const link = input.value.trim();
-      if (!link) { showCosmoModal('⚠️ Ошибка', 'Вставьте ссылку друга'); return; }
-
-      // Извлекаем тег из ссылки
+    // Извлекаем тег из ссылки
       const match = link.match(/user\/([^\/\s]+)/);
       if (!match) { showCosmoModal('⚠️ Ошибка', 'Неверный формат ссылки'); return; }
 
       const tag = '@' + match[1];
-      const friendInput = document.getElementById('addFriendInput');
+      const friendInput = document.getElementById('friendSearchInputModal');
       if (friendInput) friendInput.value = tag;
       submitAddFriendModal();
     }
@@ -2988,6 +2955,7 @@ function submitAddFriendModal() {
   
     // ===== РЕДАКТИРОВАНИЕ СООБЩЕНИЙ =====
     let editingMessageId = null;
+    let selfDestructMode = false;
 
     // Добавляем пункт в контекстное меню
     (function() {
@@ -3500,6 +3468,30 @@ function submitAddFriendModal() {
 
 
     // ===== ПЛАВАЮЩИЕ ЧАСТИЦЫ =====
+    function unlockAchievement(key) {
+      if (!userProfile.achievements) userProfile.achievements = [];
+      if (!userProfile.achievements.includes(key)) {
+        userProfile.achievements.push(key);
+        saveData();
+      }
+    }
+    
+    (function() {
+      const panel = document.getElementById('stickerPanel');
+      if (panel) {
+        const stickers = ['🚀','🌌','🪐','👽','☄️','🛸','🌑','✨','🔭','🌍','🌞','🌠'];
+        stickers.forEach(function(s) {
+          const btn = document.createElement('div');
+          btn.style.cssText = 'width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; border-radius: 8px; transition: all 0.15s;';
+          btn.textContent = s;
+          btn.onmouseenter = function() { btn.style.background = 'rgba(255,255,255,0.1)'; };
+          btn.onmouseleave = function() { btn.style.background = 'transparent'; };
+          btn.onclick = function() { sendSticker(s); panel.style.transform = 'translateX(-50%) scale(0)'; };
+          panel.appendChild(btn);
+        });
+      }
+    })();
+
     function createFloatingParticles() {
       if (userProfile.turboMode) return;
       for (let i = 0; i < 8; i++) {
@@ -3720,7 +3712,7 @@ function submitAddFriendModal() {
 
   <script>
     // 1. Подключаемся к порту 3000 (на котором работает сервер)
-    const socket = io;
+    const socket = io();
 
     // 2. Генерируем или берем случайное имя вместо prompt()
     let username = localStorage.getItem('chat_username');
@@ -3780,5 +3772,45 @@ function submitAddFriendModal() {
       chatBox.scrollTop = chatBox.scrollHeight;
     }
   </script>
+
+  <div class="vault-overlay" id="vaultOverlay">
+    <div class="vault-box">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <span style="font-family: 'Orbitron', monospace; font-size: 18px; color: #fff;">🔐 Сейф</span>
+        <button onclick="closeVault()" style="background: none; border: none; color: #888; font-size: 20px; cursor: pointer;">✕</button>
+      </div>
+      <div class="vault-locked" id="vaultLocked">
+        <div class="vault-locked-icon">🔐</div>
+        <div style="font-size: 14px; color: #888; margin-bottom: 12px;">Введите PIN-код для доступа к заметкам</div>
+        <input type="password" id="vaultPinInput" class="vault-pin-input" placeholder="••••" maxlength="4" autocomplete="off">
+        <div style="display: flex; gap: 10px; justify-content: center; margin-top: 10px;">
+          <button onclick="unlockVault()" style="padding: 10px 20px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">Открыть</button>
+          <button onclick="setVaultPin()" style="padding: 10px 20px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; font-weight: 600; cursor: pointer;">Установить PIN</button>
+        </div>
+      </div>
+      <div id="vaultUnlocked" style="display: none; flex-direction: column; flex: 1; overflow: hidden;">
+        <div style="display: flex; gap: 10px; margin-bottom: 12px;">
+          <button onclick="newVaultNote()" style="padding: 8px 16px; background: #00ff88; color: #000; border: none; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;">+ Новая заметка</button>
+          <button onclick="lockVault()" style="padding: 8px 16px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; font-weight: 600; font-size: 12px; cursor: pointer;">🔒 Закрыть сейф</button>
+        </div>
+        <div id="vaultNotesList" style="overflow-y: auto; flex: 1;"></div>
+        <div id="vaultEditor" class="vault-editor" style="display: none;">
+          <input type="text" id="vaultNoteTitle" class="vault-editor-title" placeholder="Название заметки">
+          <textarea id="vaultNoteText" class="vault-editor-text" placeholder="Текст заметки..."></textarea>
+          <div style="display: flex; gap: 10px;">
+            <button onclick="saveVaultNote()" style="padding: 10px 20px; background: #00ff88; color: #000; border: none; border-radius: 10px; font-weight: 700; cursor: pointer;">Сохранить</button>
+            <button onclick="cancelVaultEdit()" style="padding: 10px 20px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 10px; font-weight: 600; cursor: pointer;">Отмена</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="stickerPanel" style="position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) scale(0); background: rgba(12,12,12,0.98); border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; padding: 16px; z-index: 99999; display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; transition: transform 0.2s; box-shadow: 0 10px 40px rgba(0,0,0,0.9);">
+    <div style="grid-column: 1 / -1; text-align: center; font-size: 12px; color: #888; margin-bottom: 8px;">Стикеры</div>
+  </div>
+  <audio id="spaceAmbient" loop style="display: none;"><source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf756.mp3" type="audio/mpeg"></audio>
+  <div id="chat" style="display: none;"></div>
+  <input type="text" id="messageInput" style="display: none;">
+
 </body>
 </html>
