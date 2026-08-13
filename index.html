@@ -1039,6 +1039,175 @@
 <base target="_blank">
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 <base target="_blank">
+
+<style>
+/* ===== MOBILE RESPONSIVE ===== */
+@media (max-width: 768px) {
+  html, body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+
+  .app-container { flex-direction: column !important; }
+
+  /* Bottom navigation */
+  .nav-sidebar {
+    width: 100% !important;
+    height: 60px !important;
+    flex-direction: row !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    top: auto !important;
+    padding: 4px 0 !important;
+    gap: 0 !important;
+    justify-content: space-around !important;
+    border-right: none !important;
+    border-top: 1px solid rgba(255,255,255,0.1) !important;
+    z-index: 1000 !important;
+  }
+  .nav-item {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 20px !important;
+    border-radius: 10px !important;
+  }
+  .nav-item svg { width: 20px !important; height: 20px !important; }
+
+  /* Slide-out sidebar */
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 85% !important;
+    max-width: 320px !important;
+    height: 100% !important;
+    z-index: 999 !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+    z-index: 998;
+  }
+  .sidebar-overlay.show { display: block; }
+
+  /* Mobile menu button */
+  .mobile-menu-btn { display: inline-flex !important; }
+
+  /* Main chat area */
+  .chat-area {
+    width: 100% !important;
+    height: calc(100% - 60px) !important;
+  }
+
+  /* Chat */
+  .chat-header { padding: 10px 14px !important; }
+  .chat-header-avatar { width: 32px !important; height: 32px !important; }
+  .chat-header-text .title { font-size: 14px !important; }
+  .chat-header-text .subtitle { font-size: 11px !important; }
+  .messages { padding: 10px 14px !important; gap: 6px !important; }
+  .message-wrapper { max-width: 88% !important; }
+  .message { font-size: 14px !important; padding: 10px 12px !important; border-radius: 12px !important; }
+  .msg-avatar { width: 28px !important; height: 28px !important; font-size: 12px !important; }
+  .input-area { padding: 8px 14px !important; gap: 6px !important; }
+  .input-area input { font-size: 14px !important; padding: 10px 12px !important; }
+  .input-area button { padding: 10px 14px !important; font-size: 12px !important; }
+
+  /* Profile */
+  .profile-pane { padding: 10px !important; }
+  .steam-card { max-width: 100% !important; padding: 20px 16px !important; min-height: auto !important; border-radius: 16px !important; }
+  .steam-avatar-wrapper { width: 110px !important; height: 110px !important; }
+  .steam-avatar { font-size: 32px !important; }
+  .glowing-title { font-size: 20px !important; }
+  .glowing-tag { font-size: 12px !important; }
+  .profile-username { font-size: 20px !important; }
+  .profile-menu-item { padding: 10px 12px !important; font-size: 13px !important; }
+  .gifts-row { margin-bottom: 10px !important; padding-top: 10px !important; }
+  .gift-badge-tg { width: 52px !important; height: 52px !important; font-size: 24px !important; }
+
+  /* Modals */
+  .modal-box, .cosmo-modal {
+    max-width: 95% !important;
+    width: 92% !important;
+    padding: 20px !important;
+    margin: 10px !important;
+  }
+  .modal-title, .cosmo-modal-title { font-size: 18px !important; }
+
+  /* Market */
+  .market-pane { padding: 12px !important; }
+  .market-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+  .market-card-item { padding: 12px !important; }
+  .market-tabs-row { gap: 6px !important; }
+  .market-tab-btn { padding: 6px 10px !important; font-size: 11px !important; }
+
+  /* Intro */
+  .splash-container { width: 160px !important; height: 160px !important; }
+  .splash-orbit { width: 130px !important; height: 130px !important; }
+  .splash-title { font-size: 22px !important; letter-spacing: 4px !important; }
+  .splash-sub { font-size: 11px !important; }
+
+  /* Auth */
+  #authForm { width: 95% !important; padding: 20px !important; }
+  #authScreen { gap: 12px !important; }
+
+  /* Calls */
+  .call-item { padding: 10px 14px !important; }
+  .call-info h4 { font-size: 14px !important; }
+
+  /* Settings */
+  .settings-tabs-bar {
+    width: 100% !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(255,255,255,0.08) !important;
+    padding: 8px !important;
+  }
+  .settings-tab { white-space: nowrap !important; padding: 6px 12px !important; font-size: 12px !important; }
+
+  /* Search */
+  .chat-search-bar { padding: 6px 14px !important; }
+  .chat-search-input { font-size: 13px !important; padding: 6px 10px !important; }
+
+  /* Vault & Quests */
+  .vault-box, .quests-box { max-width: 95% !important; width: 92% !important; padding: 20px !important; }
+  .vault-pin-input { width: 160px !important; font-size: 20px !important; }
+
+  /* Lock screen */
+  .lock-title { font-size: 28px !important; }
+  .lock-input { width: 220px !important; padding: 12px !important; font-size: 18px !important; }
+
+  /* Context menus */
+  #contextMenu, #chatContextMenu { min-width: 180px !important; }
+  .context-menu-item { padding: 12px 14px !important; font-size: 13px !important; }
+
+  /* Music player */
+  .playlist-item { padding: 8px 12px !important; }
+
+  /* Hover card */
+  #hoverProfileCard { width: 240px !important; padding: 14px !important; }
+
+  /* Folders */
+  .folders-bar { padding: 6px 10px !important; }
+  .folder-tab { padding: 4px 10px !important; font-size: 11px !important; }
+
+  /* Reply & Pin bars */
+  .reply-panel, .pinned-message-bar { padding: 8px 14px !important; }
+
+  /* Media tabs */
+  .media-tabs-bar { padding: 6px 14px !important; }
+  .media-tab { padding: 4px 10px !important; font-size: 11px !important; }
+
+  /* Floating particles hidden for performance */
+  .floating-particle { display: none !important; }
+}
+</style>
+<base target="_blank">
 </head>
 <body>
 
@@ -1236,6 +1405,7 @@
       </div>
     </div>
   </div>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleMobileSidebar()"></div>
 <div class="app-container" id="appContainer">
     <div class="nav-sidebar">
       <div class="nav-item active" onclick="switchTab('profile', this)" title="Профиль">
@@ -2680,6 +2850,10 @@ function submitAddFriendModal() {
 
     // ===== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК =====
     function switchTab(tabName, element) {
+      const sb = document.getElementById('leftSidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (sb) sb.classList.remove('mobile-open');
+      if (overlay) overlay.classList.remove('show');
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
       if (element) element.classList.add('active');
 
@@ -2770,6 +2944,7 @@ function submitAddFriendModal() {
     function getDefaultChatHTML() {
       return `
         <div class="chat-header">
+          <button class="mobile-menu-btn" onclick="toggleMobileSidebar()" style="display:none; padding: 6px 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; font-size: 18px; cursor: pointer; margin-right: 10px;">☰</button>
           <div class="chat-header-info" onclick="showUserProfile('self')"><div class="chat-header-avatar">⭐</div><div class="chat-header-text"><span class="title">⭐ Избранное</span><span class="subtitle">Ваши сохранения</span></div></div>
         </div>
         <div class="pinned-message-bar" id="pinnedMessageBar"></div>
@@ -2804,7 +2979,7 @@ function submitAddFriendModal() {
       const targetId = userId || '';
 
       document.getElementById('mainArea').innerHTML = `
-        <div class="chat-header"><div class="chat-header-info" onclick="showUserProfile('${targetId || 'self'}')"><div class="chat-header-avatar">${avatar}</div><div class="chat-header-text"><span class="title">${name}</span><span class="subtitle">${status}</span></div></div></div>
+        <div class="chat-header"><button class="mobile-menu-btn" onclick="toggleMobileSidebar()" style="display:none; padding: 6px 10px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; font-size: 18px; cursor: pointer; margin-right: 10px;">☰</button><div class="chat-header-info" onclick="showUserProfile('${targetId || 'self'}')"><div class="chat-header-avatar">${avatar}</div><div class="chat-header-text"><span class="title">${name}</span><span class="subtitle">${status}</span></div></div></div>
         <div class="media-tabs-bar">
           <div class="media-tab active" onclick="switchMediaTab('all')">💬 Все</div>
           <div class="media-tab" onclick="switchMediaTab('media')">🖼️ Медиа</div>
@@ -2888,6 +3063,14 @@ function submitAddFriendModal() {
     }
     function getReplyData(msgId) { if (!messagesData[currentChatId]) return null; const msg = messagesData[currentChatId].find(m => m.id === msgId); if (!msg) return null; return { id: msg.id, text: msg.text, senderName: msg.senderName }; }
     function scrollToBottom() { const list = document.getElementById('messageList'); if (list) list.scrollTop = list.scrollHeight; }
+
+    function toggleMobileSidebar() {
+      const sb = document.getElementById('leftSidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if (!sb) return;
+      sb.classList.toggle('mobile-open');
+      if (overlay) overlay.classList.toggle('show');
+    }
 
     // ===== CTRL+C =====
     document.addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'c') { const sel = window.getSelection().toString(); if (sel) { navigator.clipboard.writeText(sel); showCosmoModal("📋 Скопировано", "Текст скопирован!"); } } });
