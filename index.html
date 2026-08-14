@@ -1888,6 +1888,7 @@ function checkAuth() {
     try {
       const auth = JSON.parse(saved);
       document.getElementById('authScreen').style.display = 'none';
+      listenForFriendRequests();
       if (auth.name) userProfile.name = auth.name;
       if (auth.tag) userProfile.tag = auth.tag;
       if (auth.password) userProfile._password = auth.password;
@@ -1927,6 +1928,7 @@ async function handleGoogleCredentialResponse(response) {
       }
       saveData();
       document.getElementById('authScreen').style.display = 'none';
+      listenForFriendRequests();
       showCosmoModal('🚀 Добро пожаловать!', 'Вы вошли через Google как ' + data.user.name);
       switchTab('profile');
     } else {
@@ -1963,6 +1965,7 @@ function submitAuth() {
   }
 
   document.getElementById('authScreen').style.display = 'none';
+      listenForFriendRequests();
   const intro = document.getElementById('intro-screen');
   if (intro) { intro.style.display = 'flex'; }
   checkLock();
@@ -3149,24 +3152,68 @@ function submitAddFriendModal() {
       const val = input ? input.value.trim() : '';
       if (!val) { showCosmoModal('⚠️ Ошибка', 'Введите тег друга (начинается с @)'); return; }
       if (!val.startsWith('@')) { showCosmoModal('⚠️ Ошибка', 'Тег должен начинаться с @'); return; }
+      const myTag = userProfile.tag || '@' + userProfile.username;
+      if (val.toLowerCase() === myTag.toLowerCase()) { showCosmoModal('⚠️', 'Нельзя добавить себя!'); return; }
+
+      // Check local duplicate
       const existing = (userProfile.friendRequests || []).find(function(r) { return r.targetTag === val && r.status === 'pending'; });
       if (existing) { showCosmoModal('⚠️', 'Запрос уже отправлен!'); return; }
-      const req = { id: 'req_' + Date.now(), targetTag: val, targetName: val, status: 'pending', direction: 'outgoing', timestamp: new Date().toISOString() };
-      if (!userProfile.friendRequests) userProfile.friendRequests = [];
-      userProfile.friendRequests.push(req);
-      saveData();
-      const statusEl = document.getElementById('friendRequestStatus');
-      if (statusEl) { statusEl.textContent = '✅ Запрос отправлен!'; statusEl.style.display = 'block'; }
-      showCosmoModal('📨 Отправлено', 'Запрос дружбы ' + val + ' отправлен!');
-      if (input) input.value = '';
+
+      const reqId = 'req_' + Date.now();
+      const reqData = {
+        from: myTag,
+        to: val,
+        fromName: userProfile.name || myTag,
+        status: 'pending',
+        timestamp: new Date().toISOString()
+      };
+
+      // Save to Firestore
+      if (window.cosmoDB && window.cosmoSetDoc) {
+        window.cosmoSetDoc(window.cosmoDoc(window.cosmoDB, 'friendRequests', reqId), reqData)
+          .then(function() {
+            // Save locally too
+            const localReq = { id: reqId, targetTag: val, targetName: val, status: 'pending', direction: 'outgoing', timestamp: reqData.timestamp };
+            if (!userProfile.friendRequests) userProfile.friendRequests = [];
+            userProfile.friendRequests.push(localReq);
+            saveData();
+            const statusEl = document.getElementById('friendRequestStatus');
+            if (statusEl) { statusEl.textContent = '✅ Запрос отправлен!'; statusEl.style.display = 'block'; }
+            showCosmoModal('📨 Отправлено', 'Запрос дружбы ' + val + ' отправлен!');
+            if (input) input.value = '';
+          })
+          .catch(function(e) {
+            showCosmoModal('❌ Ошибка', 'Не удалось отправить: ' + (e.message || 'сервер недоступен'));
+          });
+      } else {
+        // Offline fallback
+        const localReq = { id: reqId, targetTag: val, targetName: val, status: 'pending', direction: 'outgoing', timestamp: reqData.timestamp };
+        if (!userProfile.friendRequests) userProfile.friendRequests = [];
+        userProfile.friendRequests.push(localReq);
+        saveData();
+        showCosmoModal('📨 Отправлено (offline)', 'Запрос сохранён локально. Сервер недоступен.');
+        if (input) input.value = '';
+      }
     }
 
     function acceptFriendRequest(reqId) {
       const req = (userProfile.friendRequests || []).find(function(r) { return r.id === reqId; });
       if (!req) return;
+
+      // Update Firestore
+      if (window.cosmoDB && window.cosmoUpdateDoc) {
+        window.cosmoUpdateDoc(window.cosmoDoc(window.cosmoDB, 'friendRequests', reqId), { status: 'accepted' })
+          .then(function() { finishAccept(req); })
+          .catch(function() { finishAccept(req); });
+      } else {
+        finishAccept(req);
+      }
+    }
+
+    function finishAccept(req) {
       req.status = 'accepted';
       if (!userProfile.friends) userProfile.friends = [];
-      userProfile.friends.push(req.targetTag);
+      if (!userProfile.friends.includes(req.targetTag)) userProfile.friends.push(req.targetTag);
       saveData();
       const friendId = 'friend_' + req.targetTag.replace('@', '');
       if (!messagesData[friendId]) messagesData[friendId] = [];
@@ -3180,6 +3227,15 @@ function submitAddFriendModal() {
     function rejectFriendRequest(reqId) {
       const req = (userProfile.friendRequests || []).find(function(r) { return r.id === reqId; });
       if (!req) return;
+      if (window.cosmoDB && window.cosmoUpdateDoc) {
+        window.cosmoUpdateDoc(window.cosmoDoc(window.cosmoDB, 'friendRequests', reqId), { status: 'rejected' })
+          .then(function() { finishReject(req); })
+          .catch(function() { finishReject(req); });
+      } else {
+        finishReject(req);
+      }
+    }
+    function finishReject(req) {
       req.status = 'rejected';
       saveData();
       renderFriendRequests(currentInvitesSubTab);
@@ -3190,6 +3246,51 @@ function submitAddFriendModal() {
       if (!input) return;
       const link = input.value.trim();
       if (!link) { showCosmoModal('⚠️ Ошибка', 'Вставьте ссылку друга'); return; }
+    function listenForFriendRequests() {
+      if (!window.cosmoDB || !window.cosmoQuery || !window.cosmoWhere || !window.cosmoOnSnapshot) return;
+      const myTag = userProfile.tag || ('@' + userProfile.username);
+      if (!myTag || myTag === '@') return;
+
+      const q = window.cosmoQuery(
+        window.cosmoCollection(window.cosmoDB, 'friendRequests'),
+        window.cosmoWhere('to', '==', myTag),
+        window.cosmoWhere('status', '==', 'pending')
+      );
+
+      window.cosmoOnSnapshot(q, function(snapshot) {
+        snapshot.docChanges().forEach(function(change) {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            // Check if already in local list
+            const exists = (userProfile.friendRequests || []).find(function(r) { return r.id === change.doc.id; });
+            if (!exists) {
+              if (!userProfile.friendRequests) userProfile.friendRequests = [];
+              userProfile.friendRequests.push({
+                id: change.doc.id,
+                targetTag: data.from,
+                targetName: data.fromName || data.from,
+                status: 'pending',
+                direction: 'incoming',
+                timestamp: data.timestamp
+              });
+              saveData();
+              showCosmoModal('📨 Новый запрос!', data.fromName || data.from + ' хочет добавить тебя в друзья');
+              if (currentFriendsTab === 'invites') renderFriendRequests(currentInvitesSubTab);
+            }
+          }
+          if (change.type === 'modified') {
+            const data = change.doc.data();
+            const local = (userProfile.friendRequests || []).find(function(r) { return r.id === change.doc.id; });
+            if (local) {
+              local.status = data.status;
+              saveData();
+              if (currentFriendsTab === 'invites') renderFriendRequests(currentInvitesSubTab);
+            }
+          }
+        });
+      });
+    }
+
       const match = link.match(/user\/([^\/\s]+)/);
       if (!match) { showCosmoModal('⚠️ Ошибка', 'Неверный формат ссылки'); return; }
       const tag = '@' + match[1];
@@ -4154,5 +4255,40 @@ function submitAddFriendModal() {
   <div id="chat" style="display: none;"></div>
   <input type="text" id="messageInput" style="display: none;">
 
+
+  <!-- ===== FIREBASE ===== -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
+    import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBCpiXToEh5x8pkGedFqbJs4iQ7Y2sAOm4",
+      authDomain: "cosmo-app-47e35.firebaseapp.com",
+      projectId: "cosmo-app-47e35",
+      storageBucket: "cosmo-app-47e35.firebasestorage.app",
+      messagingSenderId: "619412539175",
+      appId: "1:619412539175:web:43b5b45dbed4999ce84b02"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    // Expose to global scope for non-module scripts
+    window.cosmoDB = db;
+    window.cosmoCollection = collection;
+    window.cosmoDoc = doc;
+    window.cosmoSetDoc = setDoc;
+    window.cosmoUpdateDoc = updateDoc;
+    window.cosmoOnSnapshot = onSnapshot;
+    window.cosmoQuery = query;
+    window.cosmoWhere = where;
+    window.cosmoGetDocs = getDocs;
+    window.cosmoDeleteDoc = deleteDoc;
+  </script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js');
+    }
+  </script>
 </body>
 </html>
