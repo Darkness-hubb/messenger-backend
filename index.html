@@ -491,7 +491,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#000000">
-  <link rel="manifest" href="data:application/json;base64,eyJuYW1lIjoiQ29zbW8gWCIsInNob3J0X25hbWUiOiJDb3NtbyBYIiwic3RhcnRfdXJsIjoiLiIsImRpc3BsYXkiOiJzdGFuZGFsb25lIiwiYmFja2dyb3VuZF9jb2xvciI6IiMwMDAwMDAiLCJ0aGVtZV9jb2xvciI6IiMwMDAwMDAifQ==">
+  <link rel="manifest" href="manifest.json">
 
   <style>
     /* ===== PWA FULLSCREEN ===== */
@@ -1131,6 +1131,7 @@
   .chat-header-extras { display: flex !important; gap: 6px; }
 }
 </style>
+<base target="_blank">
 <base target="_blank">
 </head>
 <body>
@@ -1889,6 +1890,7 @@ function checkAuth() {
       const auth = JSON.parse(saved);
       document.getElementById('authScreen').style.display = 'none';
       listenForFriendRequests();
+      listenForMessages();
       if (auth.name) userProfile.name = auth.name;
       if (auth.tag) userProfile.tag = auth.tag;
       if (auth.password) userProfile._password = auth.password;
@@ -3023,6 +3025,24 @@ function submitAddFriendModal() {
       if (!messagesData[currentChatId]) messagesData[currentChatId] = [];
       messagesData[currentChatId].push(msg);
       saveData();
+      // Отправляем сообщение в Firestore для синхронизации
+      if (window.cosmoDB && window.cosmoSetDoc && currentChatId) {
+        const chatUsers = currentChatId.split('_');
+        const myTag = userProfile.tag || ('@' + userProfile.username);
+        const otherTag = chatUsers.find(function(t) { return t !== myTag && t !== 'self' && t !== 'chat'; }) || currentChatId;
+        const msgData = {
+          text: text,
+          senderId: myTag,
+          senderName: userProfile.name,
+          senderAvatar: userProfile.avatarContent,
+          timestamp: new Date().toISOString(),
+          chatId: currentChatId,
+          to: otherTag,
+          type: text.includes('http') ? 'link' : 'text'
+        };
+        const fbMsgId = 'msg_' + Date.now() + '_' + Math.floor(Math.random()*1000);
+        window.cosmoSetDoc(window.cosmoDoc(window.cosmoDB, 'messages', fbMsgId), msgData).catch(function(){});
+      }
       playSendSound();
       updateUserStatus('self', 'online');
       const messageList = document.getElementById('messageList');
@@ -3246,7 +3266,41 @@ function submitAddFriendModal() {
       if (!input) return;
       const link = input.value.trim();
       if (!link) { showCosmoModal('⚠️ Ошибка', 'Вставьте ссылку друга'); return; }
-    function listenForFriendRequests() {
+    
+    function listenForMessages() {
+      if (!window.cosmoDB || !window.cosmoOnSnapshot || !window.cosmoCollection) return;
+      const myTag = userProfile.tag || ('@' + userProfile.username);
+      if (!myTag || myTag === '@') return;
+
+      window.cosmoOnSnapshot(window.cosmoCollection(window.cosmoDB, 'messages'), function(snapshot) {
+        snapshot.docChanges().forEach(function(change) {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            if (data.chatId === currentChatId && data.senderId !== myTag) {
+              if (!messagesData[currentChatId]) messagesData[currentChatId] = [];
+              const exists = messagesData[currentChatId].find(function(m) { return m.text === data.text && m.senderId === data.senderId; });
+              if (!exists) {
+                messagesData[currentChatId].push({
+                  id: Date.now() + Math.floor(Math.random()*1000),
+                  text: data.text,
+                  senderId: data.senderId,
+                  senderName: data.senderName,
+                  senderAvatar: data.senderAvatar,
+                  timestamp: new Date(data.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+                  reactions: {},
+                  type: data.type || 'text'
+                });
+                saveData();
+                renderMessages(currentChatId);
+                scrollToBottom();
+              }
+            }
+          }
+        });
+      });
+    }
+
+function listenForFriendRequests() {
       if (!window.cosmoDB || !window.cosmoQuery || !window.cosmoWhere || !window.cosmoOnSnapshot) return;
       const myTag = userProfile.tag || ('@' + userProfile.username);
       if (!myTag || myTag === '@') return;
