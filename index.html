@@ -7,13 +7,22 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&display=swap');
+    @font-face {
+      font-family: 'Kreadon';
+      src: url('kreadon-demi.woff2') format('woff2'),
+           url('kreadon-demi.woff') format('woff'),
+           url('kreadon-demi.ttf') format('truetype');
+      font-weight: 600;
+      font-style: normal;
+      font-display: swap;
+    }
     @import url('https://fonts.googleapis.com/css2?family=Creepster&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;700&display=swap');
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
     *, *::before, *::after {
       box-sizing: border-box; margin: 0; padding: 0;
-      font-family: 'Exo 2', system-ui, sans-serif;
+      font-family: 'Kreadon', 'Exo 2', system-ui, sans-serif;
     }
 
     html, body {
@@ -1038,7 +1047,7 @@
 
 
 <base target="_blank">
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
 <base target="_blank">
 
 <style>
@@ -1131,6 +1140,7 @@
   .chat-header-extras { display: flex !important; gap: 6px; }
 }
 </style>
+<base target="_blank">
 <base target="_blank">
 <base target="_blank">
 </head>
@@ -1314,19 +1324,10 @@
       <div id="authError" style="color: #ff5555; font-size: 13px; text-align: center; display: none;">Неверный пароль</div>
       <div style="margin-top: 14px; text-align: center;">
         <div style="font-size: 12px; color: #666; margin-bottom: 8px;">или</div>
-        <div id="g_id_onload"
-             data-client_id="874189976905-p2fvq2et5ujeui2tsrtapkfpfco62b0c.apps.googleusercontent.com"
-             data-callback="handleGoogleCredentialResponse"
-             data-auto_prompt="false">
-        </div>
-        <div class="g_id_signin"
-             data-type="standard"
-             data-size="large"
-             data-theme="outline"
-             data-text="sign_in_with"
-             data-shape="rectangular"
-             data-logo_alignment="left">
-        </div>
+        <button onclick="signInWithGoogleRedirect()" style="width: 100%; padding: 12px; background: #fff; color: #000; border: none; border-radius: 10px; font-weight: 700; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+          <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.842 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.836.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.116-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg>
+          Войти через Google
+        </button>
       </div>
     </div>
   </div>
@@ -1883,6 +1884,62 @@ let callHistory = [
 // ===== АВТОРИЗАЦИЯ =====
 const AUTH_KEY = 'cosmo_x_auth';
 
+    // ===== МУЛЬТИ-АККАУНТЫ =====
+    const ACCOUNTS_KEY = 'cosmo_x_accounts';
+    let currentAccountIndex = 0;
+
+    function getAccounts() {
+      const saved = localStorage.getItem(ACCOUNTS_KEY);
+      if (saved) { try { return JSON.parse(saved); } catch(e) {} }
+      return [];
+    }
+
+    function saveAccounts(accounts) {
+      localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts));
+    }
+
+    function addAccount() {
+      const accounts = getAccounts();
+      const currentAuth = localStorage.getItem(AUTH_KEY);
+      if (currentAuth) {
+        const existing = accounts.find(function(a) { return a.auth === currentAuth; });
+        if (!existing) {
+          accounts.push({ auth: currentAuth, profile: localStorage.getItem(STORAGE_KEY), name: userProfile.name || 'Аккаунт' });
+          saveAccounts(accounts);
+        }
+      }
+      localStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(STORAGE_KEY);
+      location.reload();
+    }
+
+    function switchAccount(index) {
+      const accounts = getAccounts();
+      if (index < 0 || index >= accounts.length) return;
+      localStorage.setItem(AUTH_KEY, accounts[index].auth);
+      if (accounts[index].profile) localStorage.setItem(STORAGE_KEY, accounts[index].profile);
+      currentAccountIndex = index;
+      location.reload();
+    }
+
+    function renderAccountSwitcher() {
+      const container = document.getElementById('accountSwitcher');
+      if (!container) return;
+      const accounts = getAccounts();
+      const currentAuth = localStorage.getItem(AUTH_KEY);
+      let html = '<div style="font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;">🔄 Аккаунты</div>';
+      accounts.forEach(function(acc, i) {
+        const isActive = acc.auth === currentAuth;
+        html += '<div onclick="switchAccount(' + i + ')" style="display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; cursor: pointer; margin-bottom: 6px; ' + (isActive ? 'background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3);' : 'background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);') + '">';
+        html += '<div style="width: 32px; height: 32px; border-radius: 50%; background: #1a1a1a; display: flex; align-items: center; justify-content: center; font-size: 14px;">👤</div>';
+        html += '<div style="flex: 1;"><div style="font-size: 13px; font-weight: 600; color: #fff;">' + (acc.name || 'Аккаунт') + '</div></div>';
+        if (isActive) html += '<div style="color: #00ff88; font-size: 12px;">✓</div>';
+        html += '</div>';
+      });
+      html += '<button onclick="addAccount()" style="width: 100%; padding: 10px; background: rgba(255,255,255,0.04); border: 1px dashed rgba(255,255,255,0.2); color: #888; border-radius: 10px; font-size: 13px; cursor: pointer; margin-top: 8px;">➕ Добавить аккаунт</button>';
+      container.innerHTML = html;
+    }
+
 function checkAuth() {
   const saved = localStorage.getItem(AUTH_KEY);
   if (saved) {
@@ -1905,41 +1962,42 @@ function checkAuth() {
   document.getElementById('intro-screen').style.display = 'none';
 }
 
-async function handleGoogleCredentialResponse(response) {
-  try {
-    const res = await fetch('/api/auth/google', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id_token: response.credential })
-    });
-    const data = await res.json();
-    if (data.success) {
-      const authData = {
-        name: data.user.name,
-        tag: data.user.tag,
-        picture: data.user.picture,
-        token: data.token,
-        google: true
-      };
-      localStorage.setItem(AUTH_KEY, JSON.stringify(authData));
-      userProfile.name = data.user.name;
-      userProfile.tag = data.user.tag;
-      if (data.user.picture) {
-        userProfile.avatarUrl = data.user.picture;
-        userProfile.avatarContent = '';
-      }
-      saveData();
-      document.getElementById('authScreen').style.display = 'none';
-      listenForFriendRequests();
-      showCosmoModal('🚀 Добро пожаловать!', 'Вы вошли через Google как ' + data.user.name);
-      switchTab('profile');
-    } else {
-      showCosmoModal('⚠️ Ошибка', 'Не удалось войти через Google');
-    }
-  } catch (e) {
-    console.error(e);
-    showCosmoModal('⚠️ Ошибка', 'Сетевая ошибка при входе через Google');
+function signInWithGoogleRedirect() {
+  if (window.cosmoAuth && window.cosmoGoogleProvider && window.cosmoSignInWithRedirect) {
+    window.cosmoSignInWithRedirect(window.cosmoAuth, window.cosmoGoogleProvider)
+      .catch(function(e) {
+        showCosmoModal('⚠️ Ошибка', 'Google Auth: ' + e.message);
+      });
+  } else {
+    showCosmoModal('⚠️ Ошибка', 'Firebase Auth не загружен');
   }
+}
+
+function handleGoogleRedirectResult() {
+  if (!window.cosmoAuth || !window.cosmoGetRedirectResult) return;
+  window.cosmoGetRedirectResult(window.cosmoAuth)
+    .then(function(result) {
+      if (result && result.user) {
+        const user = result.user;
+        const name = user.displayName || 'Google User';
+        const email = user.email || '';
+        const picture = user.photoURL || '';
+        const tag = '@' + email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_');
+        const authData = { name: name, tag: tag, picture: picture, google: true, uid: user.uid, created: new Date().toISOString() };
+        localStorage.setItem(AUTH_KEY, JSON.stringify(authData));
+        userProfile.name = name; userProfile.tag = tag;
+        if (picture) { userProfile.avatarUrl = picture; userProfile.avatarContent = ''; }
+        saveData();
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'flex';
+        listenForFriendRequests(); listenForMessages();
+        showCosmoModal('🚀 Добро пожаловать!', 'Вы вошли через Google как ' + name);
+        setTimeout(function() {
+          const btn = document.querySelector('.nav-item[onclick*="profile"]');
+          if (btn) switchTab('profile', btn);
+        }, 100);
+      }
+    }).catch(function(e) { if (e.code !== 'auth/popup-closed-by-user') showCosmoModal('⚠️ Ошибка', 'Google Auth: ' + e.message); });
 }
 
 function submitAuth() {
@@ -1977,6 +2035,7 @@ function submitAuth() {
 
 
 function loadData() {
+      handleGoogleRedirectResult();
       checkAuth();
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
@@ -2069,7 +2128,9 @@ function loadData() {
       const reg = regions[userProfile.region] || regions.ru;
       switch(tab) {
         case 'account':
+          setTimeout(renderAccountSwitcher, 50);
           return scrollBox + `
+            <div id="accountSwitcher" style="margin-bottom: 16px;"></div>
             <div class="settings-section-title">💰 Баланс</div>
             <li class="settings-item"><span>⚡ Иксы</span><span class="setting-value on">${userProfile.xCurrency}</span></li>
             <li class="settings-item" onclick="showCosmoModal('💳 Донат', 'Пополнение через ${reg.payment} (${reg.currency})')">
@@ -4314,6 +4375,7 @@ function listenForFriendRequests() {
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-app.js";
     import { getFirestore, collection, doc, setDoc, updateDoc, onSnapshot, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-firestore.js";
+    import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.17.1/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBCpiXToEh5x8pkGedFqbJs4iQ7Y2sAOm4",
@@ -4326,9 +4388,17 @@ function listenForFriendRequests() {
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
+    const auth = getAuth(app);
+    const googleProvider = new GoogleAuthProvider();
 
     // Expose to global scope for non-module scripts
     window.cosmoDB = db;
+    window.cosmoAuth = auth;
+    window.cosmoGoogleProvider = googleProvider;
+    window.cosmoSignInWithRedirect = signInWithRedirect;
+    window.cosmoGetRedirectResult = getRedirectResult;
+    window.cosmoOnAuthStateChanged = onAuthStateChanged;
+    window.cosmoSignOut = signOut;
     window.cosmoCollection = collection;
     window.cosmoDoc = doc;
     window.cosmoSetDoc = setDoc;
